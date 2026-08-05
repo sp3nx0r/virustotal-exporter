@@ -1,0 +1,13 @@
+{
+  "data": {
+    "id": "your_group_id_here",
+    "type": "group",
+    "attributes": {
+      "quotas": {
+        "api_requests_hourly": { "allowed": 60000, "used": 5 },
+        "api_requests_daily": { "allowed": 1000, "used": 93 },
+        "api_requests_monthly": { "allowed": 30000, "used": 68 }
+      }
+    }
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "title": "VirusTotal API Usage",
+  "uid": "virustotal-api-usage",
+  "schemaVersion": 39,
+  "tags": ["virustotal"],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Data source",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {}
+      },
+      {
+        "name": "group",
+        "label": "Group",
+        "type": "query",
+        "datasource": "${datasource}",
+        "query": "label_values(vt_scrape_success, group)",
+        "refresh": 2,
+        "includeAll": false,
+        "current": {}
+      }
+    ]
+  },
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "1m",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Daily API quota used",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "vt_group_quota_used{group=\"$group\", quota=\"api_requests_daily\"}" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "gauge",
+      "title": "Daily quota utilization",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 0.7 },
+            { "color": "red", "value": 0.9 }
+          ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "vt_group_quota_used{group=\"$group\", quota=\"api_requests_daily\"} / vt_group_quota_allowed{group=\"$group\", quota=\"api_requests_daily\"}" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Scrape health (0=stale/failed)",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "OK", "color": "green" } } }
+          ]
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "vt_scrape_success{group=\"$group\"}" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Seconds since last successful poll",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "time() - vt_last_scrape_timestamp_seconds{group=\"$group\"}" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "API request rate by endpoint (req/s)",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "legendFormat": "{{endpoint}}", "expr": "sum by (endpoint) (rate(vt_api_requests_total{group=\"$group\"}[5m]))" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "API request rate by user (req/s)",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "legendFormat": "{{user}} ({{account_type}})", "expr": "sum by (user, account_type) (rate(vt_user_api_requests_total{group=\"$group\"}[5m]))" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Hourly quota used vs allowed",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "legendFormat": "used", "expr": "vt_group_quota_used{group=\"$group\", quota=\"api_requests_hourly\"}" },
+        { "refId": "B", "legendFormat": "allowed", "expr": "vt_group_quota_allowed{group=\"$group\", quota=\"api_requests_hourly\"}" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Cumulative requests today by endpoint",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "legendFormat": "{{endpoint}}", "expr": "vt_api_requests_total{group=\"$group\"}" }
+      ]
+    }
+  ]
+}

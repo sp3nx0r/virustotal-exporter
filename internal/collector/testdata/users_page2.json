@@ -1,0 +1,15 @@
+{
+  "data": [
+    {
+      "id": "alice",
+      "type": "user",
+      "attributes": {
+        "quotas": {
+          "api_requests_daily": { "allowed": 100, "used": 6 }
+        }
+      },
+      "context_attributes": { "quota_consumed_from_group": 6 }
+    }
+  ],
+  "meta": {}
+}

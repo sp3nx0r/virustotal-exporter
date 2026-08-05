@@ -1,0 +1,20 @@
+{
+  "daily": {
+    "2026-07-30": {
+      "/api/v3/(file_download)": 87,
+      "/api/v3/(domains)": 6
+    }
+  },
+  "daily_endpoints_not_consuming_quota": {
+    "2026-07-30": {
+      "/api/v3/(files)": 100
+    }
+  },
+  "total": {
+    "/api/v3/(file_download)": 87,
+    "/api/v3/(domains)": 6
+  },
+  "total_endpoints_not_consuming_quota": {
+    "/api/v3/(files)": 100
+  }
+}

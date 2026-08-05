@@ -1,0 +1,8 @@
+scrape_configs:
+  - job_name: virustotal-exporter
+    # The exporter caches results from a background poller (default 60s),
+    # so a 60s scrape interval is plenty; scrapes are cheap and never hit VT.
+    scrape_interval: 60s
+    static_configs:
+      - targets:
+          - "virustotal-exporter:9942"

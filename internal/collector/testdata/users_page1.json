@@ -1,0 +1,15 @@
+{
+  "data": [
+    {
+      "id": "your_group_id_here_service_account",
+      "type": "user",
+      "attributes": {
+        "quotas": {
+          "api_requests_daily": { "allowed": 5000, "used": 93 }
+        }
+      },
+      "context_attributes": { "quota_consumed_from_group": 93 }
+    }
+  ],
+  "meta": { "cursor": "PAGE2" }
+}
