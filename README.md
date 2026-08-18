@@ -109,15 +109,26 @@ virustotal-exporter -vt.groups=your_group_id_here
 | `-web.telemetry-path` | `VT_EXPORTER_WEB_TELEMETRY_PATH` | `/metrics` | Path under which to expose metrics. |
 
 Every flag can also be set via its environment variable (naming convention:
-`VT_EXPORTER_<FLAG>`, uppercased with `.`/`-` replaced by `_`). Precedence is
-**CLI flag > environment variable > default**. An invalid env value is logged
-and the default is used.
+`VT_EXPORTER_<FLAG>`, uppercased with `.`/`-` replaced by `_`). Any of those
+env vars — and `VT_API_KEY` — can alternatively be read from a file by setting
+`<ENV>_FILE` to a path (Docker/Kubernetes secret mounts). File contents are
+trimmed of surrounding whitespace. Precedence is **CLI flag > `*_FILE` > env
+var > default**. An invalid env/file value for a flag is logged and the default
+is used; a missing or unreadable `*_FILE` path is a startup error.
 
-`VT_API_KEY` is the API key and is read from the environment only (never a
-flag). Fully env-driven invocation:
+`VT_API_KEY` is the API key and is never a flag. Provide it via `VT_API_KEY` or
+`VT_API_KEY_FILE`. Fully env-driven invocation:
 
 ```bash
 export VT_API_KEY=... VT_EXPORTER_VT_GROUPS=your_group_id_here VT_EXPORTER_POLL_INTERVAL=30s
+virustotal-exporter
+```
+
+Or from mounted files (no default path — point `*_FILE` at wherever you mounted):
+
+```bash
+export VT_API_KEY_FILE=/run/secrets/vt_api_key
+export VT_EXPORTER_VT_GROUPS_FILE=/mnt/secrets/vt_groups
 virustotal-exporter
 ```
 
@@ -133,14 +144,26 @@ docker run --rm -p 9942:9942 -e VT_API_KEY=... \
 ```
 
 Tags follow semver: `1.2.3`, `1.2`, `1`, and `latest` (latest tracks the newest
-non-prerelease release). Or build locally:
+non-prerelease release). To pass the key as a file instead of an env var
+(Compose/Swarm secrets land at `/run/secrets/<name>`; Kubernetes CSI examples
+often use `/mnt/secrets-store`):
+
+```bash
+docker run --rm -p 9942:9942 \
+  -e VT_API_KEY_FILE=/run/secrets/vt_api_key \
+  -v /path/to/vt_api_key:/run/secrets/vt_api_key:ro \
+  ghcr.io/sp3nx0r/virustotal-exporter:1 -vt.groups=your_group_id_here
+```
+
+Or build locally:
 
 ```bash
 docker build -t virustotal-exporter .
 docker run --rm -p 9942:9942 -e VT_API_KEY=... virustotal-exporter -vt.groups=your_group_id_here
 ```
 
-The image is built `FROM gcr.io/distroless/static:nonroot`.
+The image is built `FROM gcr.io/distroless/static:nonroot`. Mounted secret files
+must be readable by uid 65532.
 
 ## Releasing
 
