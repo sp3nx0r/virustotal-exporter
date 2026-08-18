@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -39,13 +40,20 @@ func main() {
 
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	// Apply env-var fallbacks for any flag not set on the command line.
-	// Precedence: CLI flag > env var > default.
-	applyEnvDefaults(flag.CommandLine, "VT_EXPORTER_", log)
+	// Apply env-var / *_FILE fallbacks for any flag not set on the command line.
+	// Precedence: CLI flag > *_FILE > env var > default.
+	if err := applyEnvDefaults(flag.CommandLine, "VT_EXPORTER_", log); err != nil {
+		log.Error("failed to apply environment/file config", "err", err)
+		os.Exit(1)
+	}
 
-	apiKey := os.Getenv("VT_API_KEY")
-	if apiKey == "" {
-		log.Error("VT_API_KEY environment variable is required")
+	apiKey, ok, err := valueFromEnvOrFile("VT_API_KEY")
+	if err != nil {
+		log.Error("failed to read API key", "err", err)
+		os.Exit(1)
+	}
+	if !ok || apiKey == "" {
+		log.Error("VT_API_KEY or VT_API_KEY_FILE is required")
 		os.Exit(1)
 	}
 	groups := splitAndTrim(*groupsFlag)
@@ -117,19 +125,27 @@ func main() {
 // applyEnvDefaults sets each flag that was not provided on the command line from
 // an environment variable named "<prefix><FLAG>", where the flag name is
 // uppercased and dots/dashes are replaced with underscores (e.g. the flag
-// "vt.base-url" maps to "VT_EXPORTER_VT_BASE_URL"). Command-line flags always
-// take precedence over environment variables.
-func applyEnvDefaults(fs *flag.FlagSet, prefix string, log *slog.Logger) {
+// "vt.base-url" maps to "VT_EXPORTER_VT_BASE_URL"). If "<ENV>_FILE" is set, the
+// contents of that path are used instead of "<ENV>". Command-line flags always
+// take precedence over both.
+func applyEnvDefaults(fs *flag.FlagSet, prefix string, log *slog.Logger) error {
 	set := map[string]bool{}
 	fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
 
 	repl := strings.NewReplacer(".", "_", "-", "_")
+	var firstErr error
 	fs.VisitAll(func(f *flag.Flag) {
 		if set[f.Name] {
 			return
 		}
 		env := prefix + repl.Replace(strings.ToUpper(f.Name))
-		v, ok := os.LookupEnv(env)
+		v, ok, err := valueFromEnvOrFile(env)
+		if err != nil {
+			if firstErr == nil {
+				firstErr = fmt.Errorf("%s: %w", env+"_FILE", err)
+			}
+			return
+		}
 		if !ok {
 			return
 		}
@@ -143,6 +159,28 @@ func applyEnvDefaults(fs *flag.FlagSet, prefix string, log *slog.Logger) {
 			_ = f.Value.Set(prev)
 		}
 	})
+	return firstErr
+}
+
+// valueFromEnvOrFile returns the value of environment variable key. If
+// key+"_FILE" is set, the contents of that path are used instead (file wins
+// over the env var). File contents are trimmed of surrounding whitespace so a
+// trailing newline in a mounted secret is not part of the value. ok is false
+// when neither source is set.
+func valueFromEnvOrFile(key string) (value string, ok bool, err error) {
+	if path, found := os.LookupEnv(key + "_FILE"); found {
+		path = strings.TrimSpace(path)
+		if path == "" {
+			return "", false, fmt.Errorf("%s is set but empty", key+"_FILE")
+		}
+		b, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return "", false, readErr
+		}
+		return strings.TrimSpace(string(b)), true, nil
+	}
+	v, found := os.LookupEnv(key)
+	return v, found, nil
 }
 
 func splitAndTrim(s string) []string {
