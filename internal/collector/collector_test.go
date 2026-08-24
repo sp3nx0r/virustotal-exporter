@@ -186,7 +186,9 @@ func (f *flakyClient) GroupQuotas(context.Context, string) (map[string]vt.Quota,
 	return map[string]vt.Quota{"api_requests_daily": {Allowed: 1000, Used: 42}}, nil
 }
 func (f *flakyClient) APIUsage(context.Context, string, time.Time) (*vt.APIUsage, error) {
-	return &vt.APIUsage{Total: map[string]float64{"/api/v3/(files)": 10}}, nil
+	u := &vt.APIUsage{}
+	u.Data.Total = map[string]float64{"/api/v3/(files)": 10}
+	return u, nil
 }
 func (f *flakyClient) UsersConsumingAPIDaily(context.Context, string, time.Time) ([]vt.UserConsumption, error) {
 	return []vt.UserConsumption{{ID: "alice", Count: 10}}, nil
