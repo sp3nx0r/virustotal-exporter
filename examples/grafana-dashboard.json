@@ -27,24 +27,27 @@
       }
     ]
   },
-  "time": { "from": "now-24h", "to": "now" },
+  "time": { "from": "now-6h", "to": "now" },
   "refresh": "1m",
   "panels": [
     {
       "id": 1,
       "type": "stat",
       "title": "Daily API quota used",
+      "description": "Consumed api_requests_daily quota in the current daily window. VT resets this ~every 24h; the stat shows usage since the last reset (lastNotNull), independent of the dashboard time range.",
       "datasource": "${datasource}",
       "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
       "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "area", "textMode": "auto" },
       "targets": [
-        { "refId": "A", "expr": "vt_group_quota_used{group=\"$group\", quota=\"api_requests_daily\"}" }
+        { "refId": "A", "expr": "max(vt_group_quota_used{group=\"$group\", quota=\"api_requests_daily\"})" }
       ]
     },
     {
       "id": 2,
       "type": "gauge",
       "title": "Daily quota utilization",
+      "description": "Fraction of the daily API request cap consumed in the current daily window. Resets ~every 24h with the VT daily quota.",
       "datasource": "${datasource}",
       "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
       "fieldConfig": {
@@ -60,8 +63,9 @@
         },
         "overrides": []
       },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdMarkers": true },
       "targets": [
-        { "refId": "A", "expr": "vt_group_quota_used{group=\"$group\", quota=\"api_requests_daily\"} / vt_group_quota_allowed{group=\"$group\", quota=\"api_requests_daily\"}" }
+        { "refId": "A", "expr": "max(vt_group_quota_used{group=\"$group\", quota=\"api_requests_daily\"}) / max(vt_group_quota_allowed{group=\"$group\", quota=\"api_requests_daily\"})" }
       ]
     },
     {
@@ -78,8 +82,9 @@
         },
         "overrides": []
       },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "textMode": "auto" },
       "targets": [
-        { "refId": "A", "expr": "vt_scrape_success{group=\"$group\"}" }
+        { "refId": "A", "expr": "max(vt_scrape_success{group=\"$group\"})" }
       ]
     },
     {
@@ -89,8 +94,9 @@
       "datasource": "${datasource}",
       "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
       "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "textMode": "auto" },
       "targets": [
-        { "refId": "A", "expr": "time() - vt_last_scrape_timestamp_seconds{group=\"$group\"}" }
+        { "refId": "A", "expr": "time() - max(vt_last_scrape_timestamp_seconds{group=\"$group\"})" }
       ]
     },
     {
@@ -99,43 +105,100 @@
       "title": "API request rate by endpoint (req/s)",
       "datasource": "${datasource}",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
-      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 0, "showPoints": "never", "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single" } },
       "targets": [
-        { "refId": "A", "legendFormat": "{{endpoint}}", "expr": "sum by (endpoint) (rate(vt_api_requests_total{group=\"$group\"}[5m]))" }
+        { "refId": "A", "legendFormat": "{{endpoint}}", "expr": "max by (endpoint) (rate(vt_api_requests_total{group=\"$group\"}[5m]))" }
       ]
     },
     {
       "id": 6,
       "type": "timeseries",
-      "title": "API request rate by user (req/s)",
+      "title": "API request rate by service account (req/s)",
+      "description": "Per-service-account API request rate (account_type=\"service_account\"). These are continuous, programmatic callers.",
       "datasource": "${datasource}",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
-      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 0, "showPoints": "never", "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single" } },
       "targets": [
-        { "refId": "A", "legendFormat": "{{user}} ({{account_type}})", "expr": "sum by (user, account_type) (rate(vt_user_api_requests_total{group=\"$group\"}[5m]))" }
+        { "refId": "A", "legendFormat": "{{user}}", "expr": "max by (user) (rate(vt_user_api_requests_total{group=\"$group\", account_type=\"service_account\"}[5m]))" }
       ]
     },
     {
       "id": 7,
       "type": "timeseries",
-      "title": "Hourly quota used vs allowed",
+      "title": "API request rate by human user (req/s)",
+      "description": "Per-human-user API request rate (account_type=\"user\"). Humans only appear on days they consume API quota with a personal API key; GUI-only activity does not consume API quota, so an empty graph is normal.",
       "datasource": "${datasource}",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never", "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single" } },
       "targets": [
-        { "refId": "A", "legendFormat": "used", "expr": "vt_group_quota_used{group=\"$group\", quota=\"api_requests_hourly\"}" },
-        { "refId": "B", "legendFormat": "allowed", "expr": "vt_group_quota_allowed{group=\"$group\", quota=\"api_requests_hourly\"}" }
+        { "refId": "A", "legendFormat": "{{user}}", "expr": "max by (user) (rate(vt_user_api_requests_total{group=\"$group\", account_type=\"user\"}[5m]))" }
       ]
     },
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Cumulative requests today by endpoint",
+      "title": "API request throughput (req/s)",
+      "description": "Total API request rate derived from the cumulative per-user counter (vt_user_api_requests_total), which never resets mid-window, so it's a smooth throughput trend independent of the hourly/daily quota resets. Swap to vt_api_requests_total for a per-endpoint breakdown.",
       "datasource": "${datasource}",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
-      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single" } },
       "targets": [
-        { "refId": "A", "legendFormat": "{{endpoint}}", "expr": "vt_api_requests_total{group=\"$group\"}" }
+        { "refId": "A", "legendFormat": "total", "expr": "sum(rate(vt_user_api_requests_total{group=\"$group\"}[$__rate_interval]))" }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Cumulative requests today by endpoint",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 0, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single" } },
+      "targets": [
+        { "refId": "A", "legendFormat": "{{endpoint}}", "expr": "max by (endpoint) (vt_api_requests_total{group=\"$group\"})" }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Daily API usage vs allowed (over time)",
+      "description": "Daily API request usage vs the allowed cap over time. api_requests_daily resets ~every 24h, so this shows the consumption sawtooth approaching the cap each day. Uses max() to stay correct across exporter replicas.",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 30 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "calcs": ["last", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "legendFormat": "used", "expr": "max(vt_group_quota_used{group=\"$group\", quota=\"api_requests_daily\"})" },
+        { "refId": "B", "legendFormat": "allowed", "expr": "max(vt_group_quota_allowed{group=\"$group\", quota=\"api_requests_daily\"})" }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "API request quota utilization over time (hourly / daily / monthly)",
+      "description": "api_requests_* usage as a fraction of each cap over time, so you can see when usage approaches the rate limit. Hourly sawtooths each hour, daily resets at UTC midnight, monthly climbs across the billing cycle. Dashed lines mark the 70%/90% thresholds. max() collapses exporter replicas.",
+      "datasource": "${datasource}",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 38 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "showPoints": "never", "thresholdsStyle": { "mode": "dashed" } },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 0.7 },
+            { "color": "red", "value": 0.9 }
+          ] }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "legendFormat": "{{window}}", "expr": "label_replace(max by (quota) (vt_group_quota_used{group=\"$group\", quota=~\"api_requests_(hourly|daily|monthly)\"}) / max by (quota) (vt_group_quota_allowed{group=\"$group\", quota=~\"api_requests_(hourly|daily|monthly)\"}), \"window\", \"$1\", \"quota\", \"api_requests_(.*)\")" }
       ]
     }
   ]
