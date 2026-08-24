@@ -139,10 +139,10 @@ func (p *Poller) pollGroup(ctx context.Context, group string, day time.Time) (*g
 		LastScrape:     p.now(),
 		ScrapeDuration: p.now().Sub(start),
 	}
-	for ep, n := range usage.Total {
+	for ep, n := range usage.Data.Total {
 		gs.Endpoints = append(gs.Endpoints, endpointUsage{Endpoint: normalizeEndpoint(ep), QuotaConsuming: true, Count: n})
 	}
-	for ep, n := range usage.TotalNonConsuming {
+	for ep, n := range usage.Data.TotalNonConsuming {
 		gs.Endpoints = append(gs.Endpoints, endpointUsage{Endpoint: normalizeEndpoint(ep), QuotaConsuming: false, Count: n})
 	}
 	for _, u := range users {

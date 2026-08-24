@@ -18,9 +18,13 @@ type Group struct {
 
 // APIUsage is the response of GET /groups/{id}/api_usage. When queried for a
 // single day (start_date == end_date), the Total maps hold that day's counts.
+// Like every other v3 response, the payload is wrapped in a top-level `data`
+// envelope; reading `total` at the root silently yields empty maps.
 type APIUsage struct {
-	Total             map[string]float64 `json:"total"`
-	TotalNonConsuming map[string]float64 `json:"total_endpoints_not_consuming_quota"`
+	Data struct {
+		Total             map[string]float64 `json:"total"`
+		TotalNonConsuming map[string]float64 `json:"total_endpoints_not_consuming_quota"`
+	} `json:"data"`
 }
 
 // usersConsumingQuota is the response of
